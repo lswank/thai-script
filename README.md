@@ -2,6 +2,12 @@
 
 A deliberate practice web application for learning Thai script using spaced repetition (SM-2 algorithm).
 
+**Live App**: https://lswank.github.io/thai-script/
+
+## Quick Start
+
+Visit the live app and start learning Thai script immediately. No installation required!
+
 ## Features
 
 ### MVP (v0.1)
@@ -42,7 +48,7 @@ This app applies research-backed learning techniques:
 
 ```bash
 # Clone the repository
-git clone https://github.com/[username]/thai-script.git
+git clone https://github.com/lswank/thai-script.git
 
 # Open index.html in browser
 open index.html
@@ -83,4 +89,11 @@ MIT
 
 ## Contributing
 
-See [Issues](https://github.com/[username]/thai-script/issues) for planned features and bugs.
+See [Issues](https://github.com/lswank/thai-script/issues) for planned features and bugs.
+
+## Roadmap
+
+- **MVP (v0.1)** ✅: Core SRS functionality
+- **v0.5**: Confusion pair detection and multiple drill modes
+- **v1.0**: Audio pronunciation and analytics dashboard
+- **v1.1**: Dark mode, PWA, and production polish
