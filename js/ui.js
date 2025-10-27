@@ -173,7 +173,7 @@ class UI {
     }
 
     /**
-     * Show comprehensive educational panel
+     * Show comprehensive educational panel with tabs
      * @param {string} character - The Thai character
      * @param {string} userAnswer - What the user typed (wrong answer)
      */
@@ -209,6 +209,8 @@ class UI {
                 }
             });
             comparisonHTML += '</div>';
+        } else {
+            comparisonHTML = '<p class="edu-text">This character has no common confusion pairs.</p>';
         }
 
         // Build visual features HTML
@@ -220,66 +222,71 @@ class UI {
                 featuresHTML += `<li>${feature}</li>`;
             });
             featuresHTML += '</ul>';
+        } else {
+            featuresHTML = '<p class="edu-text">No specific visual features noted.</p>';
         }
 
-        // Build full panel HTML
+        // Build tabbed panel HTML
         panel.innerHTML = `
-            <div class="edu-header">
-                ❌ Let's Learn This Character!
-            </div>
-
-            <div class="edu-section">
-                <div class="edu-section-title">✅ Correct Answer</div>
-                <div class="edu-answer">${data.roman}</div>
+            <!-- Panel Header -->
+            <div class="edu-panel-header">
+                <div class="edu-title">❌ Let's Learn This Character!</div>
+                <div class="edu-answer-display">${data.roman}</div>
                 <div class="edu-char-name">${character} (${data.name})</div>
             </div>
 
-            <div class="edu-section">
-                <div class="edu-section-title">📚 Why "${data.roman}"?</div>
-                <div class="edu-text">${data.explanation}</div>
+            <!-- Tabs -->
+            <div class="edu-tabs">
+                <button class="edu-tab active" data-tab="why">📚 Why?</button>
+                <button class="edu-tab" data-tab="mnemonic">🧠 Memory</button>
+                <button class="edu-tab" data-tab="visual">👀 Visual</button>
+                <button class="edu-tab" data-tab="comparison">⚠️  Compare</button>
             </div>
 
-            <div class="edu-section">
-                <div class="edu-section-title">🧠 Memory Hint</div>
-                <div class="edu-mnemonic">${data.mnemonic}</div>
-            </div>
-
-            ${features.length > 0 ? `
-            <div class="edu-section">
-                <div class="edu-section-title">👀 Visual Features</div>
-                ${featuresHTML}
-            </div>
-            ` : ''}
-
-            ${confusedChars.length > 0 ? `
-            <div class="edu-section">
-                <div class="edu-section-title">⚠️  Don't Confuse With</div>
-                ${comparisonHTML}
-            </div>
-            ` : ''}
-
-            <div class="edu-section">
-                <div class="edu-section-title">🔊 Pronunciation</div>
+            <!-- Tab: Why -->
+            <div class="edu-tab-content active" data-content="why">
+                <h3 style="margin-bottom: 1rem; color: var(--primary-color);">Why "${data.roman}"?</h3>
+                <p class="edu-text">${data.explanation}</p>
                 <button class="audio-button" onclick="ui.playAudio('${character}', '${data.roman}')">
-                    🔊 Play Audio
+                    🔊 Play Pronunciation
                 </button>
             </div>
 
-            <div class="edu-section">
-                <div class="retype-container">
-                    <div class="retype-label">Type it to remember (type "${data.roman}" to continue):</div>
-                    <input
-                        type="text"
-                        class="retype-input"
-                        id="retypeInput"
-                        placeholder="Type ${data.roman}..."
-                        autocomplete="off"
-                        autocapitalize="off"
-                        spellcheck="false"
-                    />
-                </div>
+            <!-- Tab: Mnemonic -->
+            <div class="edu-tab-content" data-content="mnemonic">
+                <h3 style="margin-bottom: 1rem; color: var(--warning-color);">Memory Device</h3>
+                <div class="edu-mnemonic">${data.mnemonic}</div>
+            </div>
+
+            <!-- Tab: Visual Features -->
+            <div class="edu-tab-content" data-content="visual">
+                <h3 style="margin-bottom: 1rem; color: var(--success-color);">Visual Features</h3>
+                ${featuresHTML}
+            </div>
+
+            <!-- Tab: Comparison -->
+            <div class="edu-tab-content" data-content="comparison">
+                <h3 style="margin-bottom: 1rem; color: var(--error-color);">Don't Confuse With</h3>
+                ${comparisonHTML}
+            </div>
+
+            <!-- Sticky Re-Type Footer -->
+            <div class="retype-container">
+                <div class="retype-label">✏️  Type "${data.roman}" to continue:</div>
+                <input
+                    type="text"
+                    class="retype-input"
+                    id="retypeInput"
+                    placeholder="Type ${data.roman}..."
+                    autocomplete="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                />
             </div>
         `;
+
+        // Setup tab switching
+        this.setupTabs();
 
         // Show panel with animation
         panel.classList.add('show');
@@ -292,6 +299,31 @@ class UI {
                 this.setupRetypeValidation(retypeInput, data.roman);
             }
         }, 100);
+    }
+
+    /**
+     * Setup tab switching functionality
+     */
+    setupTabs() {
+        const tabs = document.querySelectorAll('.edu-tab');
+        const contents = document.querySelectorAll('.edu-tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.getAttribute('data-tab');
+
+                // Remove active from all tabs and contents
+                tabs.forEach(t => t.classList.remove('active'));
+                contents.forEach(c => c.classList.remove('active'));
+
+                // Add active to clicked tab and corresponding content
+                tab.classList.add('active');
+                const activeContent = document.querySelector(`.edu-tab-content[data-content="${tabName}"]`);
+                if (activeContent) {
+                    activeContent.classList.add('active');
+                }
+            });
+        });
     }
 
     /**
