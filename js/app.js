@@ -97,6 +97,15 @@ class ThaiScriptApp {
         // Submit button
         ui.elements.submitBtn?.addEventListener('click', () => this.checkAnswer());
 
+        // Real-time input validation
+        ui.elements.romanInput?.addEventListener('input', (e) => {
+            if (this.currentCharacter) {
+                const userInput = e.target.value.trim().toLowerCase();
+                const correctAnswer = ThaiData.getRomanization(this.currentCharacter).toLowerCase();
+                ui.validateInputRealTime(userInput, correctAnswer);
+            }
+        });
+
         // Enter key in input (handled by UI module)
         // But we need to ensure focus
         ui.focusInput();
@@ -137,10 +146,14 @@ class ThaiScriptApp {
         // Display character
         ui.displayCharacter(this.currentCharacter);
         ui.hideFeedback();
+        ui.hideEducationalPanel(); // Hide any educational content
         ui.clearInput();
         ui.focusInput();
         ui.enableInput();
         ui.animateCharacterTransition();
+
+        // Reset input styling
+        ui.elements.romanInput.className = 'roman-input';
 
         // Start timing
         this.answerStartTime = Date.now();
@@ -177,38 +190,95 @@ class ThaiScriptApp {
         // Check if correct
         const isCorrect = userAnswer === correctAnswer.toLowerCase();
 
-        // Show feedback
-        ui.showFeedback(isCorrect, correctAnswer);
-        ui.disableInput();
+        if (isCorrect) {
+            // CORRECT ANSWER FLOW
+            ui.showFeedback(true, correctAnswer);
+            ui.disableInput();
 
-        // Update statistics
-        this.updateStatistics(isCorrect, responseTime);
+            // Update statistics
+            this.updateStatistics(true, responseTime);
 
-        // Calculate quality grade for SM-2
-        const quality = stats.calculateQuality(isCorrect, responseTime);
+            // Calculate quality grade for SM-2
+            const quality = stats.calculateQuality(true, responseTime);
 
-        // Review card with SM-2 algorithm
-        this.currentCard.review(quality, responseTime);
+            // Review card with SM-2 algorithm
+            this.currentCard.review(quality, responseTime);
 
-        // Update deck data
-        this.data.deck = this.deck.toJSON();
+            // Update deck data
+            this.data.deck = this.deck.toJSON();
 
-        // Save data
-        this.saveData();
+            // Save data
+            this.saveData();
 
-        // Update UI stats
-        ui.updateStats(this.data, stats);
+            // Update UI stats
+            ui.updateStats(this.data, stats);
 
-        // Check for level unlocks
-        this.checkLevelUnlocks();
+            // Check for level unlocks
+            this.checkLevelUnlocks();
 
-        // Wait before next card
-        this.awaitingNextCard = true;
-        setTimeout(() => {
-            if (this.awaitingNextCard) {
-                this.nextCard();
-            }
-        }, 2000);
+            // Wait before next card
+            this.awaitingNextCard = true;
+            setTimeout(() => {
+                if (this.awaitingNextCard) {
+                    this.nextCard();
+                }
+            }, 1500);
+
+        } else {
+            // WRONG ANSWER FLOW - EDUCATIONAL MODE
+            // 1. Trigger violent shake animation
+            ui.triggerWrongAnimation();
+
+            // 2. Play error sound (optional - browser will handle)
+
+            // 3. Hide simple feedback, show educational panel
+            ui.hideFeedback();
+            ui.disableInput();
+
+            // 4. Show comprehensive educational panel with re-type requirement
+            setTimeout(() => {
+                ui.showEducationalPanel(this.currentCharacter, userAnswer);
+
+                // Play audio pronunciation
+                ui.playAudio(this.currentCharacter, correctAnswer);
+            }, 600); // Wait for shake animation to complete
+
+            // 5. Update statistics
+            this.updateStatistics(false, responseTime);
+
+            // 6. Calculate quality grade for SM-2 (wrong = low quality)
+            const quality = stats.calculateQuality(false, responseTime);
+
+            // 7. Review card with SM-2 algorithm
+            this.currentCard.review(quality, responseTime);
+
+            // 8. Update deck data
+            this.data.deck = this.deck.toJSON();
+
+            // 9. Save data
+            this.saveData();
+
+            // 10. Update UI stats
+            ui.updateStats(this.data, stats);
+
+            // 11. Check for level unlocks
+            this.checkLevelUnlocks();
+
+            // NOTE: No auto-advance! User must re-type correct answer.
+            // proceedAfterRetype() will be called when they type it correctly.
+        }
+    }
+
+    /**
+     * Proceed to next card after user successfully re-types correct answer
+     * Called by UI after re-type validation passes
+     */
+    proceedAfterRetype() {
+        // Hide educational panel
+        ui.hideEducationalPanel();
+
+        // Move to next card
+        this.nextCard();
     }
 
     /**

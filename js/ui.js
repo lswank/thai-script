@@ -9,10 +9,12 @@ class UI {
         this.elements = {
             thaiChar: document.getElementById('thaiChar'),
             charHint: document.getElementById('charHint'),
+            charDisplay: document.querySelector('.character-display'),
             romanInput: document.getElementById('romanInput'),
             submitBtn: document.getElementById('submitBtn'),
             feedbackArea: document.getElementById('feedbackArea'),
             feedbackMsg: document.getElementById('feedbackMsg'),
+            educationalPanel: document.getElementById('educationalPanel'),
 
             // Stats
             currentLevel: document.getElementById('currentLevel'),
@@ -116,6 +118,262 @@ class UI {
         this.elements.feedbackArea.style.opacity = '0';
         this.elements.feedbackMsg.textContent = '';
         this.elements.feedbackMsg.className = 'feedback-message';
+    }
+
+    /**
+     * Validate input in real-time and provide visual feedback
+     * @param {string} userInput - Current input
+     * @param {string} correctAnswer - Correct romanization
+     */
+    validateInputRealTime(userInput, correctAnswer) {
+        const input = this.elements.romanInput;
+
+        if (!userInput) {
+            // Empty input - reset to default
+            input.className = 'roman-input';
+            return;
+        }
+
+        // Check if user input is a valid prefix of correct answer
+        if (correctAnswer.startsWith(userInput)) {
+            // On the right track
+            if (userInput === correctAnswer) {
+                input.className = 'roman-input input-correct';
+            } else {
+                input.className = 'roman-input input-partial';
+            }
+        } else {
+            // Wrong direction
+            input.className = 'roman-input input-wrong';
+        }
+    }
+
+    /**
+     * Trigger violent shake and red flash animation
+     */
+    triggerWrongAnimation() {
+        const char = this.elements.thaiChar;
+        const display = this.elements.charDisplay;
+
+        // Remove existing classes
+        char.classList.remove('correct', 'incorrect');
+        display.classList.remove('flash-red');
+
+        // Trigger reflow to restart animation
+        void char.offsetWidth;
+
+        // Add animation classes
+        char.classList.add('incorrect');
+        display.classList.add('flash-red');
+
+        // Remove after animation completes
+        setTimeout(() => {
+            display.classList.remove('flash-red');
+        }, 600);
+    }
+
+    /**
+     * Show comprehensive educational panel
+     * @param {string} character - The Thai character
+     * @param {string} userAnswer - What the user typed (wrong answer)
+     */
+    showEducationalPanel(character, userAnswer) {
+        const data = ThaiData.getCharacterData(character);
+        if (!data) return;
+
+        const panel = this.elements.educationalPanel;
+
+        // Build comparison characters HTML
+        const confusedChars = data.confusesWith || [];
+        let comparisonHTML = '';
+
+        if (confusedChars.length > 0) {
+            comparisonHTML = '<div class="char-comparison">';
+            // Show current character
+            comparisonHTML += `
+                <div class="comparison-item">
+                    <div class="comparison-char">${character}</div>
+                    <div class="comparison-label">${data.roman} (${data.name})</div>
+                </div>
+            `;
+            // Show confused characters
+            confusedChars.forEach(confusedChar => {
+                const confusedData = ThaiData.getCharacterData(confusedChar);
+                if (confusedData) {
+                    comparisonHTML += `
+                        <div class="comparison-item">
+                            <div class="comparison-char">${confusedChar}</div>
+                            <div class="comparison-label">${confusedData.roman} (${confusedData.name})</div>
+                        </div>
+                    `;
+                }
+            });
+            comparisonHTML += '</div>';
+        }
+
+        // Build visual features HTML
+        const features = data.visualFeatures || [];
+        let featuresHTML = '';
+        if (features.length > 0) {
+            featuresHTML = '<ul class="visual-features">';
+            features.forEach(feature => {
+                featuresHTML += `<li>${feature}</li>`;
+            });
+            featuresHTML += '</ul>';
+        }
+
+        // Build full panel HTML
+        panel.innerHTML = `
+            <div class="edu-header">
+                ❌ Let's Learn This Character!
+            </div>
+
+            <div class="edu-section">
+                <div class="edu-section-title">✅ Correct Answer</div>
+                <div class="edu-answer">${data.roman}</div>
+                <div class="edu-char-name">${character} (${data.name})</div>
+            </div>
+
+            <div class="edu-section">
+                <div class="edu-section-title">📚 Why "${data.roman}"?</div>
+                <div class="edu-text">${data.explanation}</div>
+            </div>
+
+            <div class="edu-section">
+                <div class="edu-section-title">🧠 Memory Hint</div>
+                <div class="edu-mnemonic">${data.mnemonic}</div>
+            </div>
+
+            ${features.length > 0 ? `
+            <div class="edu-section">
+                <div class="edu-section-title">👀 Visual Features</div>
+                ${featuresHTML}
+            </div>
+            ` : ''}
+
+            ${confusedChars.length > 0 ? `
+            <div class="edu-section">
+                <div class="edu-section-title">⚠️  Don't Confuse With</div>
+                ${comparisonHTML}
+            </div>
+            ` : ''}
+
+            <div class="edu-section">
+                <div class="edu-section-title">🔊 Pronunciation</div>
+                <button class="audio-button" onclick="ui.playAudio('${character}', '${data.roman}')">
+                    🔊 Play Audio
+                </button>
+            </div>
+
+            <div class="edu-section">
+                <div class="retype-container">
+                    <div class="retype-label">Type it to remember (type "${data.roman}" to continue):</div>
+                    <input
+                        type="text"
+                        class="retype-input"
+                        id="retypeInput"
+                        placeholder="Type ${data.roman}..."
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                    />
+                </div>
+            </div>
+        `;
+
+        // Show panel with animation
+        panel.classList.add('show');
+
+        // Focus retype input and set up validation
+        setTimeout(() => {
+            const retypeInput = document.getElementById('retypeInput');
+            if (retypeInput) {
+                retypeInput.focus();
+                this.setupRetypeValidation(retypeInput, data.roman);
+            }
+        }, 100);
+    }
+
+    /**
+     * Hide educational panel
+     */
+    hideEducationalPanel() {
+        this.elements.educationalPanel.classList.remove('show');
+        this.elements.educationalPanel.innerHTML = '';
+    }
+
+    /**
+     * Play audio pronunciation (Web Speech API fallback)
+     * @param {string} character - Thai character
+     * @param {string} romanization - Romanization
+     */
+    playAudio(character, romanization) {
+        // Try Web Speech API (Thai text-to-speech)
+        if ('speechSynthesis' in window) {
+            // Cancel any ongoing speech
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(character);
+            utterance.lang = 'th-TH';
+            utterance.rate = 0.8; // Slower for learning
+            utterance.pitch = 1.0;
+
+            // Try to find Thai voice
+            const voices = window.speechSynthesis.getVoices();
+            const thaiVoice = voices.find(voice => voice.lang.startsWith('th'));
+            if (thaiVoice) {
+                utterance.voice = thaiVoice;
+            }
+
+            window.speechSynthesis.speak(utterance);
+
+            // Fallback: also say the romanization in English
+            setTimeout(() => {
+                const romanUtterance = new SpeechSynthesisUtterance(romanization);
+                romanUtterance.lang = 'en-US';
+                romanUtterance.rate = 0.7;
+                window.speechSynthesis.speak(romanUtterance);
+            }, 1000);
+        } else {
+            alert('Audio playback not supported in this browser.');
+        }
+    }
+
+    /**
+     * Setup validation for retype input
+     * @param {HTMLElement} input - Retype input element
+     * @param {string} correctAnswer - What they should type
+     */
+    setupRetypeValidation(input, correctAnswer) {
+        if (!input) return;
+
+        input.addEventListener('input', (e) => {
+            const value = e.target.value.trim().toLowerCase();
+            const correct = correctAnswer.toLowerCase();
+
+            if (value === correct) {
+                input.classList.add('correct');
+                // Auto-proceed after short delay
+                setTimeout(() => {
+                    if (window.app) {
+                        window.app.proceedAfterRetype();
+                    }
+                }, 500);
+            } else {
+                input.classList.remove('correct');
+            }
+        });
+
+        // Also allow Enter key
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const value = input.value.trim().toLowerCase();
+                const correct = correctAnswer.toLowerCase();
+                if (value === correct && window.app) {
+                    window.app.proceedAfterRetype();
+                }
+            }
+        });
     }
 
     /**
